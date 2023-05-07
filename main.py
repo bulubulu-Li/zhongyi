@@ -510,7 +510,7 @@ def return_message():
                 #                                        chat_with_history)
                 # content = "可以"
                 query = send_message
-                content = chain({"query":query+"(用中文回答,如果没有答案，输出：我不知道)"})
+                content = chain({"query":query+"(必须用中文回答,不要用英文回答。如果没有答案，输出：我不知道。)"})
                 content = content['result']
                 print(f"用户({session.get('user_id')})得到的回复消息:{content[:40]}...")
                 if chat_with_history:
