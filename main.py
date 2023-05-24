@@ -14,11 +14,13 @@ import yaml
 import os
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
-from langchain import OpenAI,VectorDBQA
-from langchain.llms import OpenAI
+from langchain import VectorDBQA
+# from langchain.llms import ChatOpenAI as OpenAI
+from langchain.chat_models import ChatOpenAI as OpenAI
 from langchain.vectorstores import Chroma
 from langchain.document_loaders import PyPDFLoader
 
+import openai as BaseOpenAI
 
 
 app = Flask(__name__)
@@ -690,25 +692,46 @@ if __name__ == '__main__':
     all_user_dict = LRUCache(USER_SAVE_MAX)
     check_load_pickle()
 
+    contextPath='./context'
+
     if len(API_KEY) == 0:
         # 退出程序
         print("请在openai官网注册账号，获取api_key填写至程序内或命令行参数中")
         exit()
     
-    llm = OpenAI(model_name="gpt-3.5-turbo",max_tokens=102)
-    llm("怎么评价人工智能")
-    loader = PyPDFLoader("./腾讯会议知识库.pdf")
-    # pages = loader.load_and_split()
-    pages = loader.load()
-    #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
-    text_splitter = CharacterTextSplitter( separator = "。",chunk_size=100, chunk_overlap=0)
+    persist_directory = 'db'
+    embeddings = OpenAIEmbeddings()
+
     #先基于seperators[0]划分，如果两个seperators[0]之间的距离大于chunk_size，使用seperators[1]继续划分......
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
-    split_docs = text_splitter.split_documents(pages)
-    print("chunk numbers :{}".format(len(split_docs)))
-    embeddings = OpenAIEmbeddings()
-    docsearch = Chroma.from_documents(split_docs, embeddings)
+    #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
+    text_splitter = CharacterTextSplitter( separator = "。",chunk_size=300, chunk_overlap=0)
+
+    for filename in os.listdir(contextPath):
+        if filename.endswith('.txt'):
+            with open(os.path.join(contextPath, filename), 'r', encoding='utf-8') as f:
+                print("正在向量化文件：", filename)
+                file_split_docs = text_splitter.split_text(f.read())
+                try:
+                    if len(file_split_docs) > 0:
+                        docsearch.add_texts(file_split_docs)
+                except:
+                    docsearch=Chroma.from_texts(file_split_docs,embeddings, persist_directory=persist_directory)
+
+        elif filename.endswith('.pdf'):
+            loader = PyPDFLoader(os.path.join(contextPath, filename))
+            pages = loader.load()
+            split_docs = text_splitter.split_documents(pages)
+            try:
+                if len(split_docs) > 0:
+                    docsearch.add_documents(split_docs)
+            except:
+                docsearch=Chroma.from_documents(split_docs,embeddings, persist_directory=persist_directory)
+
     print("完成向量化")
+
+    docsearch.persist()
+
     chain = VectorDBQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", vectorstore=docsearch,return_source_documents=True)
-    print(docsearch.similarity_search("新版会员的价格是多少呢？",k=4))
+    # print(docsearch.similarity_search("新版会员的价格是多少呢？",k=4))
     app.run(host="0.0.0.0", port=PORT, debug=False)
