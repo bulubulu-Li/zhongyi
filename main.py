@@ -706,27 +706,27 @@ if __name__ == '__main__':
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
     #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
     text_splitter = CharacterTextSplitter( separator = "。",chunk_size=300, chunk_overlap=0)
-
+    docsearch=None
     for filename in os.listdir(contextPath):
         if filename.endswith('.txt'):
             with open(os.path.join(contextPath, filename), 'r', encoding='utf-8') as f:
                 print("正在向量化文件：", filename)
                 file_split_docs = text_splitter.split_text(f.read())
-                try:
-                    if len(file_split_docs) > 0:
+                if len(file_split_docs) > 0:
+                    try:
                         docsearch.add_texts(file_split_docs)
-                except:
-                    docsearch=Chroma.from_texts(file_split_docs,embeddings)
+                    except:
+                        docsearch=Chroma.from_texts(file_split_docs,embeddings)
 
         elif filename.endswith('.pdf'):
             loader = PyPDFLoader(os.path.join(contextPath, filename))
             pages = loader.load()
             split_docs = text_splitter.split_documents(pages)
-            try:
-                if len(split_docs) > 0:
+            if len(split_docs) > 0:
+                try:
                     docsearch.add_documents(split_docs)
-            except:
-                docsearch=Chroma.from_documents(split_docs,embeddings)
+                except:
+                    docsearch=Chroma.from_documents(split_docs,embeddings)
 
     print("完成向量化")
 
