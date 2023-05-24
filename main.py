@@ -710,6 +710,9 @@ if __name__ == '__main__':
     for filename in os.listdir(contextPath):
         if filename.endswith('.txt'):
             with open(os.path.join(contextPath, filename), 'r', encoding='utf-8') as f:
+                # if file is empty, skip it
+                if os.stat(os.path.join(contextPath, filename)).st_size == 0:
+                    continue
                 print("正在向量化文件：", filename)
                 file_split_docs = text_splitter.split_text(f.read())
                 # if docsearch does not exists, create a new one
