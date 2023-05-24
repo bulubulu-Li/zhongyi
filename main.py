@@ -718,6 +718,7 @@ if __name__ == '__main__':
                 # if docsearch does not exists, create a new one
                 if len(file_split_docs) > 0:
                     if docsearch is None:
+                        print("创建新的docsearch",file_split_docs)
                         docsearch = Chroma.from_texts(file_split_docs, embeddings)
                     # else add the texts to the existing one
                     else:
