@@ -712,21 +712,23 @@ if __name__ == '__main__':
             with open(os.path.join(contextPath, filename), 'r', encoding='utf-8') as f:
                 print("正在向量化文件：", filename)
                 file_split_docs = text_splitter.split_text(f.read())
+                # if docsearch does not exists, create a new one
                 if len(file_split_docs) > 0:
-                    try:
+                    if docsearch is None:
+                        docsearch = Chroma.from_texts(file_split_docs, embeddings)
+                    # else add the texts to the existing one
+                    else:
                         docsearch.add_texts(file_split_docs)
-                    except:
-                        docsearch=Chroma.from_texts(file_split_docs,embeddings)
-
+                    
         elif filename.endswith('.pdf'):
             loader = PyPDFLoader(os.path.join(contextPath, filename))
             pages = loader.load()
             split_docs = text_splitter.split_documents(pages)
             if len(split_docs) > 0:
-                try:
-                    docsearch.add_documents(split_docs)
-                except:
+                if docsearch is None:
                     docsearch=Chroma.from_documents(split_docs,embeddings)
+                else:
+                    docsearch.add_documents(split_docs)
 
     print("完成向量化")
 
