@@ -716,7 +716,7 @@ if __name__ == '__main__':
                     if len(file_split_docs) > 0:
                         docsearch.add_texts(file_split_docs)
                 except:
-                    docsearch=Chroma.from_texts(file_split_docs,embeddings, persist_directory=persist_directory)
+                    docsearch=Chroma.from_texts(file_split_docs,embeddings)
 
         elif filename.endswith('.pdf'):
             loader = PyPDFLoader(os.path.join(contextPath, filename))
@@ -726,11 +726,11 @@ if __name__ == '__main__':
                 if len(split_docs) > 0:
                     docsearch.add_documents(split_docs)
             except:
-                docsearch=Chroma.from_documents(split_docs,embeddings, persist_directory=persist_directory)
+                docsearch=Chroma.from_documents(split_docs,embeddings)
 
     print("完成向量化")
 
-    docsearch.persist()
+    # docsearch.persist()
 
     chain = VectorDBQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", vectorstore=docsearch,return_source_documents=True)
     # print(docsearch.similarity_search("新版会员的价格是多少呢？",k=4))
