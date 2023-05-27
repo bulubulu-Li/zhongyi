@@ -14,14 +14,76 @@ import yaml
 import os
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
-from langchain import VectorDBQA
+from langchain.chains import RetrievalQA
 # from langchain.llms import ChatOpenAI as OpenAI
 from langchain.chat_models import ChatOpenAI as OpenAI
 from langchain.vectorstores import Chroma
 from langchain.document_loaders import PyPDFLoader
+from langchain.document_loaders import Docx2txtLoader
 
 import openai as BaseOpenAI
 
+from langchain.document_loaders.base import BaseLoader
+from langchain.docstore.document import Document
+
+from langchain.prompts import PromptTemplate
+prompt_template = """使用以下 文本 来回答最后的 问题。
+如果你不知道答案，只回答"未找到答案"，不要编造答案。
+如果你的答案不是来自 文本 ，只回答"未找到答案"，不要根据你已有的知识回答。
+答案应该尽量流畅自然，答案应该尽量完整。
+你必须使用中文回答。
+
+文本: {context}
+
+问题: {question}
+中文答案:"""
+PROMPT = PromptTemplate(
+    template=prompt_template, input_variables=["context", "question"]
+)
+
+class json_loader(BaseLoader):
+
+    def __init__(self) -> None:
+        super().__init__()
+    def load(self):
+        docs = []
+        for i in range(5):
+            f = open('json_data/new_json_{}.json'.format(str(i)), 'r',encoding='utf-8')
+            content = f.read()
+            content = json.loads(content)
+            for item in content['custom']['infoList']:
+                doc = Document(page_content=item['kinfoName']+'\n\n'+item['kinfoContent'],metadata={'url':"https://www.jingmen.gov.cn/col/col18658/index.html?kinfoGuid="+item['kinfoGuid']})
+                docs.append(doc)
+        return docs
+    
+class wx_loader(BaseLoader):
+
+    def __init__(self) -> None:
+        super().__init__()
+    def load(self):
+        docs = []
+        for filename in os.listdir("wx_data"):
+            f = open('wx_data/'+filename, 'r',encoding='utf-8')
+            content = f.read()
+            content = json.loads(content)
+            doc=Document(page_content=content['title']+'\n\n'+content['content'],metadata={'url':content['url'],'title':content['title']})
+            docs.append(doc)
+        return docs
+
+class txt_loader(BaseLoader):
+
+    def __init__(self) -> None:
+        super().__init__()
+    def load(self):
+        docs = []
+        for i in range(305):
+            f = open('json_data/new_json_{}.json'.format(str(i)), 'r')
+            content = f.read()
+            content = json.loads(content)
+            for item in content['custom']['infoList']:
+                doc = Document(page_content=item['kinfoName']+'\n\n'+item['kinfoContent'],metadata={'url':"https://www.jingmen.gov.cn/col/col18658/index.html?kinfoGuid="+item['kinfoGuid']})
+                docs.append(doc)
+        return docs
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -692,7 +754,9 @@ if __name__ == '__main__':
     all_user_dict = LRUCache(USER_SAVE_MAX)
     check_load_pickle()
 
-    contextPath='./context'
+    contextPath='./contexts'
+    jsonPath='./json_data'
+    logPath='./log'
 
     if len(API_KEY) == 0:
         # 退出程序
@@ -706,8 +770,12 @@ if __name__ == '__main__':
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
     #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
     text_splitter = CharacterTextSplitter( separator = "。",chunk_size=300, chunk_overlap=0)
+    doc_splitter = CharacterTextSplitter(separator = "。\n\n",chunk_size=200, chunk_overlap=0)
     docsearch=None
+
     for filename in os.listdir(contextPath):
+        # TODO　update into from_document after update creep function
+    # deal with txt
         if filename.endswith('.txt'):
             with open(os.path.join(contextPath, filename), 'r', encoding='utf-8') as f:
                 # if file is empty, skip it
@@ -723,21 +791,57 @@ if __name__ == '__main__':
                     # else add the texts to the existing one
                     else:
                         docsearch.add_texts(file_split_docs)
-                    
+                f.close()
+    # deal with pdf   
         elif filename.endswith('.pdf'):
             loader = PyPDFLoader(os.path.join(contextPath, filename))
             pages = loader.load()
+            print("pdf loading" ,pages)
             split_docs = text_splitter.split_documents(pages)
+            print("pdf split",split_docs)
+
             if len(split_docs) > 0:
                 if docsearch is None:
                     docsearch=Chroma.from_documents(split_docs,embeddings)
                 else:
                     docsearch.add_documents(split_docs)
+    # deal with doc   
+        elif filename.endswith('.docx')or filename.endswith('.doc'):
+            loader = Docx2txtLoader(os.path.join(contextPath, filename))
+            pages = loader.load()
+            print("doc loading" ,pages)
+            split_docs = doc_splitter.split_documents(pages)
+            print("doc split",split_docs)
+
+            if len(split_docs) > 0:
+                if docsearch is None:
+                    docsearch=Chroma.from_documents(split_docs,embeddings)
+                else:
+                    docsearch.add_documents(split_docs)
+    # deal with json
+    jsloader = json_loader()
+    json_data = jsloader.load()
+
+    if len(split_docs) > 0:
+        if docsearch is None:
+            docsearch=Chroma.from_documents(json_data,embeddings)
+        else:
+            docsearch.add_documents(json_data)
+
+    # deal with wx_json
+    jsloader = json_loader()
+    json_data = jsloader.load()
+
+    if len(split_docs) > 0:
+        if docsearch is None:
+            docsearch=Chroma.from_documents(json_data,embeddings)
+        else:
+            docsearch.add_documents(json_data)
 
     print("完成向量化")
 
     # docsearch.persist()
-
-    chain = VectorDBQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", vectorstore=docsearch,return_source_documents=True)
-    # print(docsearch.similarity_search("新版会员的价格是多少呢？",k=4))
+    chain_type_kwargs = {"prompt": PROMPT}
+    chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
+    print("test question\n\n",chain({"query":"哪些情形停止享受工伤待遇"}))
     app.run(host="0.0.0.0", port=PORT, debug=False)
