@@ -1,6 +1,7 @@
 from langchain.docstore.document import Document
 from langchain.vectorstores import Chroma
 from langchain import VectorDBQA
+from langchain.chains import RetrievalQA
 import os
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI as OpenAI
@@ -14,6 +15,21 @@ with open("config.yaml", "r", encoding="utf-8") as f:
     PORT = config['PORT']
     CHAT_CONTEXT_NUMBER_MAX = config['CHAT_CONTEXT_NUMBER_MAX']     # 连续对话模式下的上下文最大数量 n，即开启连续对话模式后，将上传本条消息以及之前你和GPT对话的n-1条消息
     USER_SAVE_MAX = config['USER_SAVE_MAX']   
+    
+from langchain.prompts import PromptTemplate
+prompt_template = """使用以下 文本 来回答最后的 问题。
+如果你不知道答案，只回答"未找到答案"，不要编造答案。
+如果你的答案不是来自 文本 ，只回答"未找到答案"，不要根据你已有的知识回答。
+答案应该尽量流畅自然，答案应该尽量完整。
+你必须使用中文回答。
+
+文本: {context}
+
+问题: {question}
+中文答案:"""
+PROMPT = PromptTemplate(
+    template=prompt_template, input_variables=["context", "question"]
+)
 
 # test the role of metadata in the retrieve process
 def test_metadata_retrieve():
@@ -64,7 +80,8 @@ def test_metadata_retrieve():
     )
     embeddings = OpenAIEmbeddings()
     docsearch=Chroma.from_documents(docs,embeddings)
-    chain = VectorDBQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", vectorstore=docsearch,return_source_documents=True)
+    chain_type_kwargs = {"prompt": PROMPT}
+    chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
     print(chain({"query":"今天中午吃什么？"}))
 
 test_metadata_retrieve()
