@@ -605,10 +605,10 @@ def return_message():
                         final_res += (a[i]+'。'+'[{}]'.format(str(source[i]+1)))
                 final_res += (a[-1]+'。'+ '[{}]'.format(str(source[-1]+1)))
 
-                result += '\n参考资料：'
+                result += '\n\n\n参考资料：'
                 source = list(set(source))
                 for i in source:
-                    result += ('\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
+                    result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
 
 
                 print(f"用户({session.get('user_id')})得到的回复消息:{result[:40]}...")
