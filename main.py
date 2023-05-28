@@ -867,14 +867,14 @@ if __name__ == '__main__':
                 else:
                     docsearch.add_documents(split_docs)
     # deal with json
-    # jsloader = json_loader()
-    # json_data = jsloader.load()
+    jsloader = json_loader()
+    json_data = jsloader.load()
 
-    # if len(split_docs) > 0:
-    #     if docsearch is None:
-    #         docsearch=Chroma.from_documents(json_data,embeddings)
-    #     else:
-    #         docsearch.add_documents(json_data)
+    if len(split_docs) > 0:
+        if docsearch is None:
+            docsearch=Chroma.from_documents(json_data,embeddings)
+        else:
+            docsearch.add_documents(json_data)
 
     # deal with wx_json
     jsloader = wx_loader()
@@ -893,6 +893,6 @@ if __name__ == '__main__':
     # docsearch.persist()
     chain_type_kwargs = {"prompt": PROMPT}
     chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
-    print(chain({'query': "哪些医院将全面启用居民电子健康卡？"}))
+    print(chain({'query': "离职人员可以自己缴纳公积金吗?"}))
     # test_question()
     app.run(host="0.0.0.0", port=PORT, debug=False)
