@@ -1,5 +1,6 @@
 import datetime
 import json
+import time
 
 import requests
 from flask import Flask, render_template, request, session
@@ -52,7 +53,7 @@ class json_loader(BaseLoader):
             content = f.read()
             content = json.loads(content)
             for item in content['custom']['infoList']:
-                doc = Document(page_content=item['kinfoName']+'\n\n'+item['kinfoContent'],metadata={'url':"https://www.jingmen.gov.cn/col/col18658/index.html?kinfoGuid="+item['kinfoGuid']})
+                doc = Document(page_content=item['kinfoName']+'\n\n'+item['kinfoContent'],metadata={'url':"https://www.jingmen.gov.cn/col/col18658/index.html?kinfoGuid="+item['kinfoGuid'],'title':'new_json_{}.json'.format(str(i))})
                 docs.append(doc)
         return docs
     
@@ -62,11 +63,17 @@ class wx_loader(BaseLoader):
         super().__init__()
     def load(self):
         docs = []
-        for filename in os.listdir("wx_data"):
-            f = open('wx_data/'+filename, 'r',encoding='utf-8')
+        for filename in os.listdir("wx_json"):
+            # skip questions folder
+            if os.path.isdir(f'wx_json/{filename}'):
+                continue
+            f = open('wx_json/'+filename, 'r',encoding='utf-8')
             content = f.read()
             content = json.loads(content)
             doc=Document(page_content=content['title']+'\n\n'+content['content'],metadata={'url':content['url'],'title':content['title']})
+            # 检测 doc 长度
+            if len(doc.page_content) > 1000:
+                print(f'wx_json/{filename} is too long, {doc}')
             docs.append(doc)
         return docs
 
@@ -706,7 +713,6 @@ def delete_history():
     user_info['selected_chat_id'] = default_chat_id
     return "2"
 
-
 def check_load_pickle():
     global all_user_dict
 
@@ -749,12 +755,53 @@ def check_load_pickle():
         all_user_dict = LRUCache(USER_SAVE_MAX)
 
 
+def test_question():
+    # open the file in context/questions json_data/qestions and wx_json/questions
+    contextPath=['./context','./wx_json','./json_data']
+    for path in contextPath:
+        for filename in os.listdir(path+'/questions'):
+            print('start ',filename)
+            # open a file to read and write
+            with open(path+'/questions/'+filename,'r',encoding='utf-8') as f:
+                context=f.read()
+                if context=='':
+                    continue
+                context=json.loads(context)
+                # if context has key integrity, then skip
+                if 'integrity' in context:
+                    continue
+                title=context['title']
+                questions=context['questions']
+                
+                # test if retrieve the right document
+                for question in questions:
+                    integrity=False
+                    if len(question['question'])>500:
+                        continue
+                    print(question)
+                    # wait for 3 sec
+                    time.sleep(23)
+                    result=chain({'query':question['question']})
+                    print(result)
+                    for doc in result['source_documents']:
+                        if doc.metadata['title']==title:
+                            integrity=True
+                            break
+                    question['integrity']=integrity
+                    question['result']=result['result']
+                    question['response']=result
+                
+                context['questions']=questions
+                f.close()
+            json.dump(context,open(path+'/questions/'+filename,'w',encoding='utf-8'),ensure_ascii=False,indent=4)
+            print('finish ',filename)
+
 if __name__ == '__main__':
     print("持久化存储文件路径为:", os.path.join(os.getcwd(), USER_DICT_FILE))
     all_user_dict = LRUCache(USER_SAVE_MAX)
     check_load_pickle()
 
-    contextPath='./contexts'
+    contextPath='./context'
     jsonPath='./json_data'
     logPath='./log'
 
@@ -770,13 +817,14 @@ if __name__ == '__main__':
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
     #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
     text_splitter = CharacterTextSplitter( separator = "。",chunk_size=300, chunk_overlap=0)
-    doc_splitter = CharacterTextSplitter(separator = "。\n\n",chunk_size=200, chunk_overlap=0)
+    doc_splitter = CharacterTextSplitter(separator = "。\n\n",chunk_size=150, chunk_overlap=0)
     docsearch=None
 
     for filename in os.listdir(contextPath):
         # TODO　update into from_document after update creep function
     # deal with txt
         if filename.endswith('.txt'):
+            continue
             with open(os.path.join(contextPath, filename), 'r', encoding='utf-8') as f:
                 # if file is empty, skip it
                 if os.stat(os.path.join(contextPath, filename)).st_size == 0:
@@ -819,29 +867,32 @@ if __name__ == '__main__':
                 else:
                     docsearch.add_documents(split_docs)
     # deal with json
-    jsloader = json_loader()
-    json_data = jsloader.load()
+    # jsloader = json_loader()
+    # json_data = jsloader.load()
 
-    if len(split_docs) > 0:
-        if docsearch is None:
-            docsearch=Chroma.from_documents(json_data,embeddings)
-        else:
-            docsearch.add_documents(json_data)
+    # if len(split_docs) > 0:
+    #     if docsearch is None:
+    #         docsearch=Chroma.from_documents(json_data,embeddings)
+    #     else:
+    #         docsearch.add_documents(json_data)
 
     # deal with wx_json
-    jsloader = json_loader()
+    jsloader = wx_loader()
     json_data = jsloader.load()
+    split_docs = text_splitter.split_documents(json_data)
 
     if len(split_docs) > 0:
         if docsearch is None:
-            docsearch=Chroma.from_documents(json_data,embeddings)
+
+            docsearch=Chroma.from_documents(split_docs,embeddings)
         else:
-            docsearch.add_documents(json_data)
+            docsearch.add_documents(split_docs)
 
     print("完成向量化")
 
     # docsearch.persist()
     chain_type_kwargs = {"prompt": PROMPT}
     chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
-    print("test question\n\n",chain({"query":"哪些情形停止享受工伤待遇"}))
+    print(chain({'query': "哪些医院将全面启用居民电子健康卡？"}))
+    # test_question()
     app.run(host="0.0.0.0", port=PORT, debug=False)
