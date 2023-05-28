@@ -21,6 +21,7 @@ from langchain.chat_models import ChatOpenAI as OpenAI
 from langchain.vectorstores import Chroma
 from langchain.document_loaders import PyPDFLoader
 from langchain.document_loaders import Docx2txtLoader
+from rouge import Rouge
 
 import openai as BaseOpenAI
 
@@ -583,13 +584,39 @@ def return_message():
                 query = send_message
                 content = chain({"query":query+"(必须用中文回答,不要用英文回答。如果没有答案，输出：我不知道。)"})
                 print(content)
-                content = content['result']
-                print(f"用户({session.get('user_id')})得到的回复消息:{content[:40]}...")
+                result = content['result']
+                a = result.split("。")
+                a.remove('')
+                rouge = Rouge()
+                source = []
+                for sub_string in a:
+                    tmp_score = []
+                    for i in range(len(content["source_documents"])):
+                        sub_doc = content["source_documents"][i]
+                        rouge_score = rouge.get_scores([' '.join(list(sub_string))], [' '.join(list(sub_doc.page_content))])
+                        tmp_score.append(rouge_score[0]["rouge-l"]['f'])
+                    source.append(tmp_score.index(max(tmp_score)))
+
+                final_res = ''
+                for i in range(len(a)-1):
+                    if source[i]==source[i+1]:
+                        final_res += (a[i]+',')
+                    else:
+                        final_res += (a[i]+'。'+'[{}]'.format(str(source[i]+1)))
+                final_res += (a[-1]+'。'+ '[{}]'.format(str(source[-1]+1)))
+
+                result += '\n参考资料：'
+                source = list(set(source))
+                for i in source:
+                    result += ('\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
+
+
+                print(f"用户({session.get('user_id')})得到的回复消息:{result[:40]}...")
                 if chat_with_history:
                     user_info['chats'][chat_id]['have_chat_context'] += 1
                 # 异步存储all_user_dict
                 asyncio.run(save_all_user_dict())
-                return content
+                return result
             else:
                 generate = handle_messages_get_response_stream(send_message, apikey, messages_history,
                                                                user_info['chats'][chat_id]['have_chat_context'],
