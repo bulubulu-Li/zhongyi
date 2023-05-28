@@ -9,3 +9,4 @@ chromadb
 openai
 tiktoken
 docx2txt
+rouge
