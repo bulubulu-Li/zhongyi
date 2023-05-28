@@ -1,0 +1,11 @@
+flask
+requests
+PyYaml
+pysocks
+pypdf
+langchain
+unstructured
+chromadb
+openai
+tiktoken
+docx2txt
