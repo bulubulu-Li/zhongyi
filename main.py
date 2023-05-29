@@ -931,7 +931,7 @@ if __name__ == '__main__':
 
     # docsearch.persist()
     # print(len(docsearch))
-    chain_type_kwargs = {"prompt": PROMPT}
-    chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0,openai_api_key=API_KEY), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
+    # chain_type_kwargs = {"prompt": PROMPT}
+    # chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0,openai_api_key=API_KEY), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
     # print(chain({'query': "离职人员可以自己缴纳公积金吗?"}))
     app.run(host="0.0.0.0", port=PORT, debug=False)
