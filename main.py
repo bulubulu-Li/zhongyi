@@ -582,7 +582,7 @@ def return_message():
                 #                                        chat_with_history)
                 # content = "可以"
                 query = send_message
-                content = chain({"query":query+"(必须用中文回答,不要用英文回答。如果没有答案，输出：我不知道。)"})
+                content = chain({"query":query})
                 print(content)
                 result = content['result']
                 a = result.split("。")
@@ -605,6 +605,7 @@ def return_message():
                         final_res += (a[i]+'。'+'[{}]'.format(str(source[i]+1)))
                 final_res += (a[-1]+'。'+ '[{}]'.format(str(source[-1]+1)))
 
+                result = final_res
                 result += '\n\n\n参考资料：'
                 source = list(set(source))
                 for i in source:
@@ -919,6 +920,7 @@ if __name__ == '__main__':
     print("完成向量化")
 
     # docsearch.persist()
+    print(len(docsearch))
     chain_type_kwargs = {"prompt": PROMPT}
     chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
     print(chain({'query': "离职人员可以自己缴纳公积金吗?"}))
