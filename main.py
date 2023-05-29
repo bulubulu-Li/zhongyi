@@ -591,6 +591,7 @@ def return_message():
                         print(content)
                         break
                     except:
+                        print('当前key失效，将使用新的key')
                         continue                
                 result = content['result']
                 a = result.split("。")
@@ -848,7 +849,8 @@ if __name__ == '__main__':
         exit()
     
     persist_directory = 'db'
-    embeddings = OpenAIEmbeddings()
+    
+    embeddings = OpenAIEmbeddings(openai_api_key=API_KEY[1])
 
     #先基于seperators[0]划分，如果两个seperators[0]之间的距离大于chunk_size，使用seperators[1]继续划分......
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
