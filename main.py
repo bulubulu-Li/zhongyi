@@ -850,7 +850,7 @@ if __name__ == '__main__':
     
     persist_directory = 'db'
     
-    embeddings = OpenAIEmbeddings(openai_api_key=API_KEY[1])
+    embeddings = OpenAIEmbeddings(openai_api_key=API_KEY[0])
 
     #先基于seperators[0]划分，如果两个seperators[0]之间的距离大于chunk_size，使用seperators[1]继续划分......
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
