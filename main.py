@@ -115,6 +115,7 @@ else:
     print('false')
 
 API_KEY = os.getenv("OPENAI_API_KEY")  # 如果环境变量中设置了OPENAI_API_KEY，则使用环境变量中的OPENAI_API_KEY
+API_KEY = API_KEY.split('[SEP]')
 PORT = os.getenv("PORT", default=PORT)  # 如果环境变量中设置了PORT，则使用环境变量中的PORT
 
 STREAM_FLAG = False  # 是否开启流式推送
