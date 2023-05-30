@@ -54,7 +54,7 @@ class json_loader(BaseLoader):
             content = f.read()
             content = json.loads(content)
             for item in content['custom']['infoList']:
-                doc = Document(page_content=item['kinfoName']+'\n\n'+item['kinfoContent'],metadata={'url':"https://www.jingmen.gov.cn/col/col18658/index.html?kinfoGuid="+item['kinfoGuid'],'title':'new_json_{}.json'.format(str(i))})
+                doc = Document(page_content=item['kinfoName']+'\n\n'+item['kinfoContent'],metadata={'url':"https://www.jingmen.gov.cn/col/col18658/index.html?kinfoGuid="+item['kinfoGuid'],'title':item['kinfoName']})
                 docs.append(doc)
         return docs
     
