@@ -71,7 +71,9 @@ class wx_loader(BaseLoader):
             f = open('wx_json/'+filename, 'r',encoding='utf-8')
             content = f.read()
             content = json.loads(content)
-            doc=Document(page_content=content['title']+'\n\n'+content['content'],metadata={'url':content['url'],'title':content['title']})
+            for i in range(1+len(content['content'])//900):
+              # print(i)
+              doc=Document(page_content=content['title']+'\n\n'+content['content'][i*900:i*900+900],metadata={'url':content['url'],'title':content['title']})
             # 检测 doc 长度
             if len(doc.page_content) > 1000:
                 print(f'wx_json/{filename} is too long, {doc}')
@@ -586,40 +588,43 @@ def return_message():
                 for key in API_KEY:
                     try:
                         chain_type_kwargs = {"prompt": PROMPT}
-                        chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0,openai_api_key=key), chain_type="stuff", retriever=docsearch.as_retriever(), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
+                        chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo",max_tokens=500,temperature=0,openai_api_key=key), chain_type="stuff", retriever=docsearch.as_retriever(search_kwargs={'k':3}), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
                         content = chain({"query":query})
                         print(content)
                         break
                     except:
                         print('当前key失效，将使用新的key')
-                        continue                
-                result = content['result']
-                a = result.split("。")
-                a.remove('')
-                rouge = Rouge()
-                source = []
-                for sub_string in a:
-                    tmp_score = []
-                    for i in range(len(content["source_documents"])):
-                        sub_doc = content["source_documents"][i]
-                        rouge_score = rouge.get_scores([' '.join(list(sub_string))], [' '.join(list(sub_doc.page_content))])
-                        tmp_score.append(rouge_score[0]["rouge-l"]['f'])
-                    source.append(tmp_score.index(max(tmp_score)))
+                        continue
+                try:                
+                    result = content['result']
+                    a = result.split("。")
+                    if '' in a:
+                        a.remove('')
+                    rouge = Rouge()
+                    source = []
+                    for sub_string in a:
+                        tmp_score = []
+                        for i in range(len(content["source_documents"])):
+                            sub_doc = content["source_documents"][i]
+                            rouge_score = rouge.get_scores([' '.join(list(sub_string))], [' '.join(list(sub_doc.page_content))])
+                            tmp_score.append(rouge_score[0]["rouge-l"]['f'])
+                        source.append(tmp_score.index(max(tmp_score)))
 
-                final_res = ''
-                for i in range(len(a)-1):
-                    if source[i]==source[i+1]:
-                        final_res += (a[i]+',')
-                    else:
-                        final_res += (a[i]+'。'+'[{}]'.format(str(source[i]+1)))
-                final_res += (a[-1]+'。'+ '[{}]'.format(str(source[-1]+1)))
+                    final_res = ''
+                    for i in range(len(a)-1):
+                        if source[i]==source[i+1]:
+                            final_res += (a[i]+',')
+                        else:
+                            final_res += (a[i]+'。'+'[{}]'.format(str(source[i]+1)))
+                    final_res += (a[-1]+'。'+ '[{}]'.format(str(source[-1]+1)))
 
-                result = final_res
-                result += '\n\n\n参考资料：'
-                source = list(set(source))
-                for i in source:
-                    result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
-
+                    result = final_res
+                    result += '\n\n\n参考资料：'
+                    source = list(set(source))
+                    for i in source:
+                        result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
+                except:
+                    result='未找到答案'
 
                 print(f"用户({session.get('user_id')})得到的回复消息:{result[:40]}...")
                 if chat_with_history:
