@@ -29,6 +29,8 @@ from langchain.document_loaders.base import BaseLoader
 from langchain.docstore.document import Document
 
 from langchain.prompts import PromptTemplate
+import sys   
+sys.setrecursionlimit(10000)
 prompt_template = """使用以下 文本 来回答最后的 问题。
 如果你不知道答案，只回答"未找到答案"，不要编造答案。
 如果你的答案不是来自 文本 ，只回答"未找到答案"，不要根据你已有的知识回答。
