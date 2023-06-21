@@ -629,6 +629,9 @@ def return_message():
                     result='未找到答案'
 
                 print(f"用户({session.get('user_id')})得到的回复消息:{result[:40]}...")
+
+                result += "\n\n 召回文档：\n\n"+content["source_documents"]
+
                 if chat_with_history:
                     user_info['chats'][chat_id]['have_chat_context'] += 1
                 # 异步存储all_user_dict
@@ -865,74 +868,8 @@ if __name__ == '__main__':
     text_splitter = CharacterTextSplitter( separator = "。",chunk_size=300, chunk_overlap=0)
     doc_splitter = CharacterTextSplitter(separator = "。\n\n",chunk_size=150, chunk_overlap=0)
     docsearch=None
-
-    for filename in os.listdir(contextPath):
-        # TODO　update into from_document after update creep function
-    # deal with txt
-        if filename.endswith('.txt'):
-            continue
-            with open(os.path.join(contextPath, filename), 'r', encoding='utf-8') as f:
-                # if file is empty, skip it
-                if os.stat(os.path.join(contextPath, filename)).st_size == 0:
-                    continue
-                print("正在向量化文件：", filename)
-                file_split_docs = text_splitter.split_text(f.read())
-                # if docsearch does not exists, create a new one
-                if len(file_split_docs) > 0:
-                    if docsearch is None:
-                        print("创建新的docsearch",file_split_docs)
-                        docsearch = Chroma.from_texts(file_split_docs, embeddings)
-                    # else add the texts to the existing one
-                    else:
-                        docsearch.add_texts(file_split_docs)
-                f.close()
-    # deal with pdf   
-        elif filename.endswith('.pdf'):
-            loader = PyPDFLoader(os.path.join(contextPath, filename))
-            pages = loader.load()
-            print("pdf loading" ,pages)
-            split_docs = text_splitter.split_documents(pages)
-            print("pdf split",split_docs)
-
-            if len(split_docs) > 0:
-                if docsearch is None:
-                    docsearch=Chroma.from_documents(split_docs,embeddings)
-                else:
-                    docsearch.add_documents(split_docs)
-    # deal with doc   
-        elif filename.endswith('.docx')or filename.endswith('.doc'):
-            loader = Docx2txtLoader(os.path.join(contextPath, filename))
-            pages = loader.load()
-            print("doc loading" ,pages)
-            split_docs = doc_splitter.split_documents(pages)
-            print("doc split",split_docs)
-
-            if len(split_docs) > 0:
-                if docsearch is None:
-                    docsearch=Chroma.from_documents(split_docs,embeddings)
-                else:
-                    docsearch.add_documents(split_docs)
-    # deal with json
-    jsloader = json_loader()
-    json_data = jsloader.load()
-
-    if len(split_docs) > 0:
-        if docsearch is None:
-            docsearch=Chroma.from_documents(json_data,embeddings)
-        else:
-            docsearch.add_documents(json_data)
-
-    # deal with wx_json
-    jsloader = wx_loader()
-    json_data = jsloader.load()
-    split_docs = text_splitter.split_documents(json_data)
-
-    if len(split_docs) > 0:
-        if docsearch is None:
-
-            docsearch=Chroma.from_documents(split_docs,embeddings)
-        else:
-            docsearch.add_documents(split_docs)
+    persist_directory = 'knowledge'
+    docsearch = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 
     print("完成向量化")
 
