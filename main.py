@@ -586,11 +586,12 @@ def return_message():
                 #                                        user_info['chats'][chat_id]['have_chat_context'],
                 #                                        chat_with_history)
                 # content = "可以"
+                retireval_number = 4
                 query = send_message
                 for key in API_KEY:
                     try:
                         chain_type_kwargs = {"prompt": PROMPT}
-                        chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo-16k-0613",max_tokens=500,temperature=0,openai_api_key=key), chain_type="stuff", retriever=docsearch.as_retriever(search_kwargs={'k':3}), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
+                        chain = RetrievalQA.from_chain_type(llm=OpenAI(model_name="gpt-3.5-turbo-16k-0613",max_tokens=500,temperature=0,openai_api_key=key), chain_type="stuff", retriever=docsearch.as_retriever(search_kwargs={'k':retireval_number}), chain_type_kwargs=chain_type_kwargs,verbose=True,return_source_documents=True)
                         content = chain({"query":query})
                         print(content)
                         break
@@ -628,7 +629,7 @@ def return_message():
                 # except:
                 #     result='未找到答案'
                 result += '\n\n\n召回文档：'
-                for i in source:
+                for i in range(retireval_number):
                     result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].page_content))
 
                 print(f"用户({session.get('user_id')})得到的回复消息:{result[:40]}...")
