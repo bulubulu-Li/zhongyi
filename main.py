@@ -868,7 +868,7 @@ if __name__ == '__main__':
     text_splitter = CharacterTextSplitter( separator = "。",chunk_size=300, chunk_overlap=0)
     doc_splitter = CharacterTextSplitter(separator = "。\n\n",chunk_size=150, chunk_overlap=0)
     docsearch=None
-    persist_directory = 'knowledge'
+    persist_directory = './knowledge/knowledge_base'
     docsearch = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 
     print("完成向量化")
