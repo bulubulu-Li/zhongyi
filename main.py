@@ -597,36 +597,36 @@ def return_message():
                     except:
                         print('当前key失效，将使用新的key')
                         continue
-                try:                
-                    result = content['result']
-                    a = result.split("。")
-                    if '' in a:
-                        a.remove('')
-                    rouge = Rouge()
-                    source = []
-                    for sub_string in a:
-                        tmp_score = []
-                        for i in range(len(content["source_documents"])):
-                            sub_doc = content["source_documents"][i]
-                            rouge_score = rouge.get_scores([' '.join(list(sub_string))], [' '.join(list(sub_doc.page_content))])
-                            tmp_score.append(rouge_score[0]["rouge-l"]['f'])
-                        source.append(tmp_score.index(max(tmp_score)))
+                # try:                
+                result = content['result']
+                a = result.split("。")
+                if '' in a:
+                    a.remove('')
+                rouge = Rouge()
+                source = []
+                for sub_string in a:
+                    tmp_score = []
+                    for i in range(len(content["source_documents"])):
+                        sub_doc = content["source_documents"][i]
+                        rouge_score = rouge.get_scores([' '.join(list(sub_string))], [' '.join(list(sub_doc.page_content))])
+                        tmp_score.append(rouge_score[0]["rouge-l"]['f'])
+                    source.append(tmp_score.index(max(tmp_score)))
 
-                    final_res = ''
-                    for i in range(len(a)-1):
-                        if source[i]==source[i+1]:
-                            final_res += (a[i]+',')
-                        else:
-                            final_res += (a[i]+'。'+'[{}]'.format(str(source[i]+1)))
-                    final_res += (a[-1]+'。'+ '[{}]'.format(str(source[-1]+1)))
+                final_res = ''
+                for i in range(len(a)-1):
+                    if source[i]==source[i+1]:
+                        final_res += (a[i]+',')
+                    else:
+                        final_res += (a[i]+'。'+'[{}]'.format(str(source[i]+1)))
+                final_res += (a[-1]+'。'+ '[{}]'.format(str(source[-1]+1)))
 
-                    result = final_res
-                    result += '\n\n\n参考资料：'
-                    source = list(set(source))
-                    for i in source:
-                        result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
-                except:
-                    result='未找到答案'
+                result = final_res
+                result += '\n\n\n参考资料：'
+                source = list(set(source))
+                for i in source:
+                    result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
+                # except:
+                #     result='未找到答案'
 
                 print(f"用户({session.get('user_id')})得到的回复消息:{result[:40]}...")
 
