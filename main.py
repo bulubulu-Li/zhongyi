@@ -586,7 +586,7 @@ def return_message():
                 #                                        user_info['chats'][chat_id]['have_chat_context'],
                 #                                        chat_with_history)
                 # content = "可以"
-                retireval_number = 4
+                retireval_number = 10
                 query = send_message
                 for key in API_KEY:
                     try:
