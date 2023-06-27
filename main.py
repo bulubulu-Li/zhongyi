@@ -883,14 +883,14 @@ if __name__ == '__main__':
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
     #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
 
-    loader = Docx2txtLoader("./drive/MyDrive/知识库问答.docx")
+    loader = Docx2txtLoader("./知识库问答.docx")
     data = loader.load()    
 
     text_splitter = CharacterTextSplitter(separator = "。\n\n\n\n",chunk_size=20, chunk_overlap=0)
     split_docs = text_splitter.split_documents(data)
     print("chunk numbers :{}".format(len(split_docs)))
 
-    loader = Docx2txtLoader("./drive/MyDrive/知识库政策法规类.docx")
+    loader = Docx2txtLoader("./知识库政策法规类.docx")
     new_data = loader.load()
 
     text_splitter = CharacterTextSplitter(separator = "。\n\n\n\n\n\n",chunk_size=20, chunk_overlap=0)
