@@ -29,6 +29,7 @@ from langchain.document_loaders.base import BaseLoader
 from langchain.docstore.document import Document
 
 from langchain.prompts import PromptTemplate
+
 import sys   
 sys.setrecursionlimit(10000)
 prompt_template = """
@@ -586,7 +587,7 @@ def return_message():
                 #                                        user_info['chats'][chat_id]['have_chat_context'],
                 #                                        chat_with_history)
                 # content = "可以"
-                retireval_number = 10
+                retireval_number = 4
                 query = send_message
                 for key in API_KEY:
                     try:
@@ -628,9 +629,6 @@ def return_message():
                     result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].metadata))
                 # except:
                 #     result='未找到答案'
-                result += '\n\n\n召回文档：'
-                for i in range(retireval_number):
-                    result += ('\n\n'+ "[{}] ".format(str(i+1)) + str(content["source_documents"][i].page_content))
 
                 print(f"用户({session.get('user_id')})得到的回复消息:{result[:40]}...")
 
@@ -846,6 +844,23 @@ def test_question():
             json.dump(context,open(path+'/questions/'+filename,'w',encoding='utf-8'),ensure_ascii=False,indent=4)
             print('finish ',filename)
 
+class long_doc_loader(BaseLoader):
+
+    def __init__(self) -> None:
+        super().__init__()
+    def load(self,split_docs):
+        docs = []
+        for i in range(len(split_docs)):
+          title = split_docs[i].page_content.split('\n\n')[0]
+          # print(split_docs[i].page_content[3000:]=='')
+          ptr = 0
+          chunk_length = 3500
+          while(split_docs[i].page_content[chunk_length*ptr:chunk_length*ptr+chunk_length]!=''):
+            doc = Document(page_content=title+'\n\n'+split_docs[i].page_content[chunk_length*ptr:chunk_length*ptr+chunk_length],metadata={'source':'政策文件：'+title})
+            docs.append(doc)
+            ptr+=1
+        return docs
+
 if __name__ == '__main__':
     print("持久化存储文件路径为:", os.path.join(os.getcwd(), USER_DICT_FILE))
     all_user_dict = LRUCache(USER_SAVE_MAX)
@@ -867,12 +882,26 @@ if __name__ == '__main__':
     #先基于seperators[0]划分，如果两个seperators[0]之间的距离大于chunk_size，使用seperators[1]继续划分......
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
     #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
-    text_splitter = CharacterTextSplitter( separator = "。",chunk_size=300, chunk_overlap=0)
-    doc_splitter = CharacterTextSplitter(separator = "。\n\n",chunk_size=150, chunk_overlap=0)
-    docsearch=None
-    persist_directory = './knowledge/knowledge_base'
-    docsearch = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 
+    loader = Docx2txtLoader("./drive/MyDrive/知识库问答.docx")
+    data = loader.load()    
+
+    text_splitter = CharacterTextSplitter(separator = "。\n\n\n\n",chunk_size=20, chunk_overlap=0)
+    split_docs = text_splitter.split_documents(data)
+    print("chunk numbers :{}".format(len(split_docs)))
+
+    loader = Docx2txtLoader("./drive/MyDrive/知识库政策法规类.docx")
+    new_data = loader.load()
+
+    text_splitter = CharacterTextSplitter(separator = "。\n\n\n\n\n\n",chunk_size=20, chunk_overlap=0)
+    new_split_docs = text_splitter.split_documents(new_data)
+    print("chunk numbers :{}".format(len(new_split_docs)))
+
+    loader = long_doc_loader()
+
+    split_docs.extend(loader.load(new_split_docs))
+    docsearch = Chroma.from_documents(split_docs, embeddings)
+    print(len(split_docs))
     print("完成向量化")
 
     # docsearch.persist()
