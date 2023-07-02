@@ -867,7 +867,7 @@ class zhongyi_loader(BaseLoader):
         super().__init__()
     def load(self):
         docs = []
-        f = open('./drive/MyDrive/ZY/train.json'.format(str(0)), 'r')
+        f = open('./train.json'.format(str(0)), 'r')
         content = f.read()
         content = json.loads(content)
         for item in content:
