@@ -861,6 +861,20 @@ class long_doc_loader(BaseLoader):
             ptr+=1
         return docs
 
+class zhongyi_loader(BaseLoader):
+
+    def __init__(self) -> None:
+        super().__init__()
+    def load(self):
+        docs = []
+        f = open('./drive/MyDrive/ZY/train.json'.format(str(0)), 'r')
+        content = f.read()
+        content = json.loads(content)
+        for item in content:
+          doc = Document(page_content=item['text']+'\n\n',metedata={'知识点':item['text']})
+          docs.append(doc)
+        return docs
+
 if __name__ == '__main__':
     print("持久化存储文件路径为:", os.path.join(os.getcwd(), USER_DICT_FILE))
     all_user_dict = LRUCache(USER_SAVE_MAX)
@@ -883,24 +897,12 @@ if __name__ == '__main__':
     # text_splitter = RecursiveCharacterTextSplitter( separators = ["\n \n","。",",",],chunk_size=500, chunk_overlap=0)
     #基于seperator划分，如果两个seperator之间的距离大于chunk_size,该chunk的size会大于chunk_size
 
-    loader = Docx2txtLoader("./知识库问答.docx")
-    data = loader.load()    
-
-    text_splitter = CharacterTextSplitter(separator = "。\n\n\n\n",chunk_size=20, chunk_overlap=0)
-    split_docs = text_splitter.split_documents(data)
+    loader = zhongyi_loader()
+    split_docs = loader.load()
     print("chunk numbers :{}".format(len(split_docs)))
 
-    loader = Docx2txtLoader("./知识库政策法规类.docx")
-    new_data = loader.load()
-
-    text_splitter = CharacterTextSplitter(separator = "。\n\n\n\n\n\n",chunk_size=20, chunk_overlap=0)
-    new_split_docs = text_splitter.split_documents(new_data)
-    print("chunk numbers :{}".format(len(new_split_docs)))
-
-    loader = long_doc_loader()
-
-    split_docs.extend(loader.load(new_split_docs))
     docsearch = Chroma.from_documents(split_docs, embeddings)
+
     print(len(split_docs))
     print("完成向量化")
 
